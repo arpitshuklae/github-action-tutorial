@@ -1,0 +1,43 @@
+name: Deploy knowledge base
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - .gitignore
+      - README.md
+      - CONTRIBUTING.md
+      - LICENSE
+      - LICENSE.txt
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: knowledge-base-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/deploy-test.yml
+
+  build:
+    needs: test
+    permissions:
+      contents: read
+      pages: read
+    uses: ./.github/workflows/deploy-build.yml
+
+  deploy:
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    permissions:
+      pages: write
+      id-token: write
+      issues: write
+    uses: ./.github/workflows/deploy-pages.yml
+    with:
+      site_url: ${{ needs.build.outputs.site_url }}
